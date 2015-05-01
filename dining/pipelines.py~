@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+
+# Define your item pipelines here
+#
+# Don't forget to add your pipeline to the ITEM_PIPELINES setting
+# See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+
+
+def send_mail(title, message):
+    print "Sending mail.........."
+    import smtplib
+    from email.MIMEMultipart import MIMEMultipart
+    from email.MIMEText import MIMEText
+
+    # my send email address
+    fromaddr = 'zhiminp@gmail.com'
+    server = smtplib.SMTP('smtp.gmail.com:587')
+    # receivers
+    # toaddrs = 'linjian5477@gmail.com' #'zhimin.peng@math.ucla.edu'
+    toaddrs = ['zhimin.peng@math.ucla.edu']
+    """
+    toaddrs = ['zhimin.peng@math.ucla.edu',
+               'linjian5477@gmail.com', 'kyuan.ustc@gmail.com',
+               'wuty07@gmail.com',
+               'basca.yan@gmail.com']
+    """
+    username = 'zhiminp@gmail.com'
+    password = 'freebird.1'
+    server.ehlo()
+    server.starttls()
+    server.login(username, password)
+
+    # message for email
+    msg = MIMEMultipart()
+    msg['From'] = fromaddr
+    msg['To'] = ' ,'.join(toaddrs)
+    msg['Subject'] = title
+
+    msg.attach(MIMEText(message, 'plain'))
+    text = msg.as_string()
+    server.sendmail(fromaddr, toaddrs, text)
+    server.quit()
+    print "Mail sent"
+
+
+import json
+
+
+class JsonWriterPipeline(object):
+
+    def __init__(self):
+        self.file = open('items.jl', 'wb')
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item)) + "\n"
+        self.file.write(line)
+        return item
+
+
+class FilterItem(object):
+    def process_item(self, item, spider):
+        # list of my favoriate dishes
+        favoriate_list = ['salmon', 'lamb', 'steak',
+                          'fried egg', 'seafood',
+                          'bbq pork ribs', 'chicken wings']
+        menu = item['menu']
+        item['favor'] = []
+        for dish in menu:
+            flag = 0
+            for my_favor in favoriate_list:
+                if my_favor in dish:
+                    flag = 1
+            if flag is 1:
+                item['favor'].append(dish)
+                print dish
+        # print item['favor']
+        return item
+
+
+class MailFriends(object):
+    def process_item(self, item, spider):
+        if len(item['favor']) > 0:
+            title = 'Dinner in undergraduate dining hall?'
+            message = ',  '.join(item['favor'])
+            message = "Dining halls have " + message + " tonight!"
+            send_mail(title, message)
+        else:
+            title = 'Dinner in undergraduate dining hall?'
+            message = "Dining halls don't have anything we like. Find \
+            something you like on the website? Email me your favoriate dish \
+            so that I can add it to our favoriate dishes list."
+            send_mail(title, message)
+        return item
